@@ -1,15 +1,29 @@
+var app = require('express')();
+var fs = require('fs');
 var http = require('http');
+var https = require('https');
+var privateKey  = fs.readFileSync('./cert/server.key', 'utf8');
+var certificate = fs.readFileSync('./cert/server.crt', 'utf8');
+var credentials = {key: privateKey, cert: certificate};
 
-http.createServer(function (request, response) {
+var httpServer = http.createServer(app);
+var httpsServer = https.createServer(credentials, app);
+var PORT = 8001;
+var SSLPORT = 8002;
 
-    // 发送 HTTP 头部
-    // HTTP 状态值: 200 : OK
-    // 内容类型: text/plain
-    response.writeHead(200, {'Content-Type': 'text/plain'});
+httpServer.listen(PORT, function() {
+    console.log('HTTP Server is running on: http://localhost:%s', PORT);
+});
+httpsServer.listen(SSLPORT, function() {
+    console.log('HTTPS Server is running on: https://localhost:%s', SSLPORT);
+});
 
-    // 发送响应数据 "Hello World"
-    response.end('Hello World\n');
-}).listen(8888);
-
-// 终端打印如下信息
-console.log('Server running at http://127.0.0.1:8888/');
+// Welcome
+app.get('/', function(req, res) {
+    if(req.protocol === 'https') {
+        res.status(200).send('Welcome to Safety Land!');
+    }
+    else {
+        res.status(200).send('Welcome!');
+    }
+});
