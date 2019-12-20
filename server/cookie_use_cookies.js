@@ -1,8 +1,6 @@
 function cookie(req,res) {
-    var req_cookies = req.signedCookies
-    var res_cookies=res.cookie
-
-    var isLogin= req_cookies.isLogin
+    var cookies = new require("cookies")(req, res);
+    var isLogin= cookies.get("isLogin",{signed:true})
     
     this.is_login=function is_login() {
         if(isLogin)
@@ -19,7 +17,7 @@ function cookie(req,res) {
         return isLogin
     }
     this.set_login_status=function set_login_status(account) {
-        res.cookie(
+        cookies.set(
             "is_login",
             true,
             {
@@ -29,7 +27,7 @@ function cookie(req,res) {
                 path:"/"
             }
         )
-        res.cookie(
+        cookies.set(
             "username",
             account.username,
             {
@@ -39,7 +37,7 @@ function cookie(req,res) {
                 path:"/"
             }
         )
-        res.cookie(
+        cookies.set(
             "identity_ID",
             account.identity_ID,
             {
@@ -57,8 +55,8 @@ function cookie(req,res) {
         else
         {
             var account= {
-                    username:req_cookies.username,
-                    identity_ID:req_cookies.identity_ID
+                    username:cookies.get("username",{signed:true}),
+                    identity_ID:cookies.get("identity_ID",{signed:true})
                 };
             return account
         }
