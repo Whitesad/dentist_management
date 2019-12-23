@@ -7,7 +7,9 @@ var images = require('images')
 * promise获取方法
 * image_ctrl(req.files.file).then(newFilepath => {
         console.log(newFilepath)
-    })*/
+    })
+*需要在该文件同级目录下创建document，images和tmp三个文件夹
+ */
 exports.savefile = function savefile(posterData) {
     var promise = new Promise(function (resolve, reject) {
         var filePath = posterData.path
