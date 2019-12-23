@@ -43,14 +43,14 @@ app.post('/login',urlencodedParser,function (req,res) {
         console.log("A connect try to login")
         console.log("host:"+req.headers.host+"  servername:"+req.connection.servername)
 
-        //var account = new json_ctrl(res.query)
+        //var account = new json_ctrl(req.query)
         //var login_status = sql_ctrl.login(acconut)
 
         //test code
         login_status={status:'success'}
-        account={username:"test02",identity_ID: '123'}
+        account={username:"test02",identity_ID: '123',avatar:image_ctr(req.file)}
 
-        if(login_status.status=='success')
+        if(login_status.status=='login_success')
         {
             //set login
             res.cookie("is_login",true,{signed:true,maxAge:7*24*3600*1000, overwrite:false, path:"/"})
@@ -291,50 +291,122 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
 
 
 //===============================================
-//***************update api**********************
-//提供修改对数据库进行操作的权限，现在主要是修改个人信息
+//***************reserve api**********************
+//提供预约医生的功能
 //===============================================
 
-
-app.post('/update/doctor_info',urlencodedParser,function (req,res) {
+//进行预约
+app.post('/reserve',urlencodedParser,function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
         {
             //need try catch
+            var reserve_info=req.query
+
+            var patient={
+                username: req.signedCookies['username'],
+                identity_ID:req.signedCookies['identity_ID']
+            }
+
+            var doctor={
+                name:reserve_info.doctor_name,
+                identity_ID:reserve_info.identity_ID
+            }
+
+            var time={
+                day:reserve_info.day,
+                period:reserve_info.period
+            }
+
+            console.log("username:"+patient.username+"  identity_ID:"+patient.identity_ID+"  try to make a reserve.")
+            console.log(JSON.stringify(reserve_info))
+            console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
+
+            var reserve_status = sql_ctrl.reserve(patient,doctor,time)
+
+            console.log('update status:'+reserve_status.status)
+            console.log('\n\n')
+            res.send(reserve_status)
+        }else
+        {
+            console.log("invalid doctor info query:no login!")
+            console.log("\n\n")
+            res.redirect('./login')
+        }
+    }
+})
+
+//===============================================
+//***************update api**********************
+//提供修改对数据库进行操作的权限，现在主要是修改个人信息
+//===============================================
+
+//更新个人信息
+app.post('/update/personal_info',urlencodedParser,function (req,res) {
+    if(req.protocol === 'https') {
+        //if is login
+        if(req.signedCookies['is_login']=='true')
+        {
+            //need try catch
+            var register_info=req.query
+
+            console.log("username:"+register_info.username+"  identity_ID:"+register_info.identity_ID+"  try to update personal info.")
+            console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
+
+            var update_status = sql_ctrl.uptate_personal_info(register_info)
+
+            console.log(JSON.stringify(register_info))
+            console.log('update status:'+update_status.status)
+            console.log('\n\n')
+            res.send(update_status)
+        }else
+        {
+            console.log("invalid personal info update:no login!")
+            console.log("\n\n")
+            res.redirect('./login')
+        }
+    }
+})
+
+//医生更新预约信息的表
+app.post('/update/treat_record_info',urlencodedParser,function (req,res) {
+    if(req.protocol === 'https') {
+        //if is login
+        if(req.signedCookies['is_login']=='true')
+        {
             var account={
                 username: req.signedCookies['username'],
                 identity_ID:req.signedCookies['identity_ID']
             }
-            console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to query doctor info.")
+
+            console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to update treat record info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var doctor_query_info = new json_ctrl(res.query)
-            console.log(JSON.stringify(doctor_query_info))
+            var is_doctor=sql_ctrl.is_doctor(account)
 
-            if(doctor_query_info.type=='doctor_list')
+            if(is_doctor)
             {
-                var doctor_list_info=sql_ctrl.query_doctor_list_info();
+                //need try catch
+                var record=req.query
 
-                console.log(JSON.stringify(doctor_list_info))
-                console.log("\n\n")
-                res.send(doctor_list_info)
-            }else if(doctor_query_info.type=='doctor_detail')
+                var update_status = sql_ctrl.uptate_treat_record_info(record)
+
+                console.log(JSON.stringify(record))
+                console.log('update status:'+update_status.status)
+                console.log('\n\n')
+                res.send(update_status)
+            }else
             {
-                var doctor={
-                    doctor_name:doctor_query_info.value.doctor_name,
-                    doctor_job_ID:doctor_query_info.value.doctor_job_ID
-                }
-
-                var doctor_info=sql_ctrl.query_doctor_info(doctor);
-
-                console.log(JSON.stringify(doctor_info));
+                console.log("invalid treat reserve update:no permission!")
                 console.log("\n\n")
-                res.send(doctor_info)
+                res.redirect('./login')
             }
+
+
         }else
         {
-            console.log("invalid doctor info query:no login!")
+            console.log("invalid treat reserve update:no login!")
             console.log("\n\n")
             res.redirect('./login')
         }
