@@ -3,6 +3,7 @@
 //===============================================
 var cookies=require('./server/cookie')
 var cookieParser = require('cookie-parser')
+var multipart = require('connect-multiparty');
 
 
 //===============================================
@@ -11,10 +12,10 @@ var cookieParser = require('cookie-parser')
 var app = require('express')();
 app.use(cookieParser('test'));
 app.keys=['yang']
+var multipartMiddleware = multipart();
 
-var sql_ctrl=new require('./controller/sql_ctrl')()
-var json_ctrl=new require('./controller/json_ctrl')()
-var image_ctrl=new require('./controller/image_ctrl')()
+var sql_ctrl=require('./controller/SQL_ctrl')
+var image_ctrl=require('./controller/image_ctrl')
 
 // create application/x-www-form-urlencoded decoder
 var bodyParser = require('body-parser');
@@ -40,34 +41,35 @@ httpsServer.listen(PORT, function() {
 //登录api，登录后会创建加密cookie保证登录状态为1 week
 //===============================================
 
+
 app.post('/login',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         console.log("A connect try to login")
         console.log("host:"+req.headers.host+"  servername:"+req.connection.servername)
 
         var account={
-            username:req.query.username,
-            password:req.query.password,
-            identity_ID:req.query.identity_ID
+            username:req.body.username,
+            password:req.body.password,
+            identity_ID:req.body.identity_ID
         }
 
-        var login_status =await sql_ctrl.login(account)
+        sql_ctrl.login(account, function (login_status) {
+            //test code
+            // login_status={status:'success'}
+            // account={username:"test02",identity_ID: '123',avatar:image_ctr(req.file)}
 
-        //test code
-        // login_status={status:'success'}
-        // account={username:"test02",identity_ID: '123',avatar:image_ctr(req.file)}
+            if(login_status.status=='login_success')
+            {
+                //set login
+                res.cookie("is_login",true,{signed:true,maxAge:7*24*3600*1000, overwrite:false, path:"/"})
+                res.cookie("username", account.username, {signed:true, maxAge:7*24*3600*1000, overwrite:false, path:"/"})
+                res.cookie("identity_ID", account.identity_ID, {signed:true, maxage:7*24*3600*1000, overwrite:false, path:"/"})
+            }
 
-        if(login_status.status=='login_success')
-        {
-            //set login
-            res.cookie("is_login",true,{signed:true,maxAge:7*24*3600*1000, overwrite:false, path:"/"})
-            res.cookie("username", account.username, {signed:true, maxAge:7*24*3600*1000, overwrite:false, path:"/"})
-            res.cookie("identity_ID", account.identity_ID, {signed:true, maxage:7*24*3600*1000, overwrite:false, path:"/"})
-        }
-
-        console.log(JSON.stringify(login_status))
-        console.log("\n\n")
-        res.send(login_status)
+            console.log(JSON.stringify(login_status))
+            console.log("\n\n")
+            res.send(login_status)
+        })
     }
 })
 
@@ -86,6 +88,7 @@ app.post('/register/patient',urlencodedParser, async function (req,res) {
         var ID_photo=await image_ctrl.save_identity_ID_image(req.files.ID_photo)
         var register_info={
             name:req.query.name,
+            password:req.query.password,
             identity_ID:req.query.identity_ID,
             phonenumber:req.query.phonenumber,
             ID_photo:ID_photo,
@@ -114,6 +117,7 @@ app.post('/register/doctor',urlencodedParser,async function (req,res) {
         var cert_photo=await image_ctrl.save_doctor_cert_image(req.files.cert_photo)
         var register_info={
             name:req.query.name,
+            password:req.query.password,
             identity_ID:req.query.identity_ID,
             phonenumber:req.query.phonenumber,
             ID_photo:ID_photo,
@@ -409,7 +413,7 @@ app.post('/update/personal_info',urlencodedParser,async function (req,res) {
 })
 
 //医生更新预约信息的表
-app.post('/update/treat_record_info',urlencodedParser,async function (req,res) {
+app.post('/update/treat_record_info',multipartMiddleware,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -422,13 +426,15 @@ app.post('/update/treat_record_info',urlencodedParser,async function (req,res) {
             console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to update treat record info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var is_doctor=await sql_ctrl.is_doctor(account)
+            //var is_doctor=await sql_ctrl.is_doctor(account)
 
+            var is_doctor=true
             if(is_doctor)
             {
                 //need try catch
 
-                var remark_photo=await sql_ctrl.save_treat_record_image(req.files)
+                var remark_photo=await image_ctrl.save_treat_record_image(req.files.treat_photo)
+
                 var record={
                     start_time:req.query.start_time,
                     end_time:req.query.end_time,
