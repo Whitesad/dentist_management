@@ -4,6 +4,7 @@
 var cookies=require('./server/cookie')
 var cookieParser = require('cookie-parser')
 
+
 //===============================================
 //*************global boject*********************
 //===============================================
@@ -13,6 +14,7 @@ app.keys=['yang']
 
 var sql_ctrl=new require('./controller/sql_ctrl')()
 var json_ctrl=new require('./controller/json_ctrl')()
+var image_ctrl=new require('./controller/image_ctrl')()
 
 // create application/x-www-form-urlencoded decoder
 var bodyParser = require('body-parser');
@@ -38,17 +40,22 @@ httpsServer.listen(PORT, function() {
 //登录api，登录后会创建加密cookie保证登录状态为1 week
 //===============================================
 
-app.post('/login',urlencodedParser,function (req,res) {
+app.post('/login',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         console.log("A connect try to login")
         console.log("host:"+req.headers.host+"  servername:"+req.connection.servername)
 
-        //var account = new json_ctrl(req.query)
-        //var login_status = sql_ctrl.login(acconut)
+        var account={
+            username:req.query.username,
+            password:req.query.password,
+            identity_ID:req.query.identity_ID
+        }
+
+        var login_status =await sql_ctrl.login(account)
 
         //test code
-        login_status={status:'success'}
-        account={username:"test02",identity_ID: '123',avatar:image_ctr(req.file)}
+        // login_status={status:'success'}
+        // account={username:"test02",identity_ID: '123',avatar:image_ctr(req.file)}
 
         if(login_status.status=='login_success')
         {
@@ -70,15 +77,25 @@ app.post('/login',urlencodedParser,function (req,res) {
 //===============================================
 
 //病人注册api
-app.post('/register/patient',urlencodedParser,function (req,res) {
+app.post('/register/patient',urlencodedParser, async function (req,res) {
     if(req.protocol === 'https') {
         console.log("A connect try to register as patient")
         console.log("host:"+req.headers.host+"  servername:"+req.connection.servername)
 
-        var register_info=new json_ctrl(res.query)
+        var avatar=await image_ctrl.sava_avatar(req.files.avatar)
+        var ID_photo=await image_ctrl.save_identity_ID_image(req.files.ID_photo)
+        var register_info={
+            name:req.query.name,
+            identity_ID:req.query.identity_ID,
+            phonenumber:req.query.phonenumber,
+            ID_photo:ID_photo,
+            sex:req.query.sex,
+            introduce:req.query.introduce,
+            avatar:avatar
+        }
         console.log(JSON.stringify(register_info))
 
-        var register_status=sql_ctrl.register_patient(register_info)
+        var register_status=await sql_ctrl.register_patient(register_info)
 
         console.log(register_status);
         console.log("\n\n")
@@ -87,15 +104,28 @@ app.post('/register/patient',urlencodedParser,function (req,res) {
 })
 
 //医生注册api
-app.post('/register/doctor',urlencodedParser,function (req,res) {
+app.post('/register/doctor',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         console.log("A connect try to register as patient")
         console.log("host:"+req.headers.host+"  servername:"+req.connection.servername)
 
-        var register_info=new json_ctrl(res.query)
+        var avatar=await image_ctrl.sava_avatar(req.files.avatar)
+        var ID_photo=await image_ctrl.save_identity_ID_image(req.files.ID_photo)
+        var cert_photo=await image_ctrl.save_doctor_cert_image(req.files.cert_photo)
+        var register_info={
+            name:req.query.name,
+            identity_ID:req.query.identity_ID,
+            phonenumber:req.query.phonenumber,
+            ID_photo:ID_photo,
+            job_number:req.query.job_number,
+            cert_photo:cert_photo,
+            sex:req.query.sex,
+            introduce:req.query.introduce,
+            avatar:avatar
+        }
         console.log(JSON.stringify(register_info))
 
-        var register_status=sql_ctrl.register_doctor(register_info)
+        var register_status=await sql_ctrl.register_doctor(register_info)
 
         console.log(register_status);
         console.log("\n\n")
@@ -108,7 +138,7 @@ app.post('/register/doctor',urlencodedParser,function (req,res) {
 //===============================================
 
 //查询个人信息
-app.post('/query/personal_info',urlencodedParser,function (req,res) {
+app.post('/query/personal_info',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -121,12 +151,14 @@ app.post('/query/personal_info',urlencodedParser,function (req,res) {
             console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to query personal info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var query_info = new json_ctrl(res.query)
+            var query_info ={
+                type:req.query.type
+            }
             console.log(JSON.stringify(query_info))
 
             if(query_info.type=='basical_info')
             {
-                var personal_info=sql_ctrl.query_personal_info(account)
+                var personal_info=await sql_ctrl.query_personal_info(account)
 
                 console.log(personal_info)
                 console.log("\n\n")
@@ -142,7 +174,7 @@ app.post('/query/personal_info',urlencodedParser,function (req,res) {
 })
 
 //查询诊疗记录
-app.post('/query/treat_record',urlencodedParser,function (req,res) {
+app.post('/query/treat_record',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -155,12 +187,14 @@ app.post('/query/treat_record',urlencodedParser,function (req,res) {
             console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to query treat_record info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var treat_query_info = new json_ctrl(res.query)
+            var treat_query_info = {
+                type:req.query.type
+            }
             console.log(JSON.stringify(query_info))
 
             if(treat_query_info.type=='treat_list')
             {
-                var treat_list_info=sql_ctrl.query_treat_list_info(account);
+                var treat_list_info=await sql_ctrl.query_treat_list_info(account);
 
                 console.log(JSON.stringify(treat_list_info))
                 console.log("\n\n")
@@ -168,10 +202,10 @@ app.post('/query/treat_record',urlencodedParser,function (req,res) {
             }else if(treat_query_info.type=='treat_record')
             {
                 var record={
-                    record_ID:treat_query_info.value.record_ID
+                    PK:req.query.record_ID
                 }
 
-                var treat_record_info=sql_ctrl.query_treat_record_info(record);
+                var treat_record_info=await sql_ctrl.query_treat_record_info(record);
 
                 console.log(JSON.stringify(treat_record_info));
                 console.log("\n\n")
@@ -187,7 +221,7 @@ app.post('/query/treat_record',urlencodedParser,function (req,res) {
 })
 
 //查询医生信息
-app.post('/query/doctor_info',urlencodedParser,function (req,res) {
+app.post('/query/doctor_info',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -200,12 +234,14 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
             console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to query doctor info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var doctor_query_info = new json_ctrl(res.query)
+            var doctor_query_info = {
+                type:req.query.type
+            }
             console.log(JSON.stringify(doctor_query_info))
 
             if(doctor_query_info.type=='doctor_list')
             {
-                var doctor_list_info=sql_ctrl.query_doctor_list_info();
+                var doctor_list_info=await sql_ctrl.query_doctor_list_info();
 
                 console.log(JSON.stringify(doctor_list_info))
                 console.log("\n\n")
@@ -213,11 +249,10 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
             }else if(doctor_query_info.type=='doctor_detail')
             {
                 var doctor={
-                    doctor_name:doctor_query_info.value.doctor_name,
-                    doctor_job_ID:doctor_query_info.value.doctor_job_ID
+                    PK:req.query.doctor_ID,
                 }
 
-                var doctor_info=sql_ctrl.query_doctor_info(doctor);
+                var doctor_info=await sql_ctrl.query_doctor_info(doctor);
 
                 console.log(JSON.stringify(doctor_info));
                 console.log("\n\n")
@@ -233,12 +268,12 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
 })
 
 //查询公告信息
-app.post('/query/annouce_info',urlencodedParser,function (req,res) {
+app.post('/query/annouce_info',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         console.log("A connect try to query the annouce")
         console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-        var annouce_info=sql_ctrl.query_announce_info()
+        var annouce_info=await sql_ctrl.query_announce_info()
         console.log(JSON.stringify(annouce_info))
         console.log("\n\n")
         res.send(annouce_info)
@@ -246,7 +281,7 @@ app.post('/query/annouce_info',urlencodedParser,function (req,res) {
 })
 
 //查询预约信息
-app.post('/query/doctor_info',urlencodedParser,function (req,res) {
+app.post('/query/doctor_info',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -259,12 +294,14 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
             console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to query reserve info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var reserve_query_info = new json_ctrl(res.query)
+            var reserve_query_info = {
+                type:req.query.type
+            }
             console.log(JSON.stringify(reserve_query_info))
 
             if(reserve_query_info.type=='reserve_list')
             {
-                var reserve_list_info=sql_ctrl.query_reserve_list_info(account);
+                var reserve_list_info=await sql_ctrl.query_reserve_list_info(account);
 
                 console.log(JSON.stringify(reserve_list_info))
                 console.log("\n\n")
@@ -272,9 +309,9 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
             }else if(reserve_query_info.type=='reserve_detail')
             {
                 var reserve={
-                    reserve_ID:doctor_query_info.value.reserve_ID
+                    PK:req.query.reserve_ID
                 }
-                var reserve_info=sql_ctrl.query_reserve_info(reserve);
+                var reserve_info=await sql_ctrl.query_reserve_info(reserve);
 
                 console.log(JSON.stringify(reserve_info));
                 console.log("\n\n")
@@ -296,7 +333,7 @@ app.post('/query/doctor_info',urlencodedParser,function (req,res) {
 //===============================================
 
 //进行预约
-app.post('/reserve',urlencodedParser,function (req,res) {
+app.post('/reserve',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -305,7 +342,7 @@ app.post('/reserve',urlencodedParser,function (req,res) {
             var reserve_info=req.query
 
             var patient={
-                username: req.signedCookies['username'],
+                name: req.signedCookies['username'],
                 identity_ID:req.signedCookies['identity_ID']
             }
 
@@ -323,7 +360,7 @@ app.post('/reserve',urlencodedParser,function (req,res) {
             console.log(JSON.stringify(reserve_info))
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var reserve_status = sql_ctrl.reserve(patient,doctor,time)
+            var reserve_status = await sql_ctrl.reserve(patient,doctor,time)
 
             console.log('update status:'+reserve_status.status)
             console.log('\n\n')
@@ -343,18 +380,20 @@ app.post('/reserve',urlencodedParser,function (req,res) {
 //===============================================
 
 //更新个人信息
-app.post('/update/personal_info',urlencodedParser,function (req,res) {
+app.post('/update/personal_info',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
         {
             //need try catch
+            var avatar=await image_ctrl.sava_avatar(req.files.avatar)
             var register_info=req.query
+            register_info['avatar']=avatar
 
             console.log("username:"+register_info.username+"  identity_ID:"+register_info.identity_ID+"  try to update personal info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var update_status = sql_ctrl.uptate_personal_info(register_info)
+            var update_status =await sql_ctrl.uptate_personal_info(register_info)
 
             console.log(JSON.stringify(register_info))
             console.log('update status:'+update_status.status)
@@ -370,7 +409,7 @@ app.post('/update/personal_info',urlencodedParser,function (req,res) {
 })
 
 //医生更新预约信息的表
-app.post('/update/treat_record_info',urlencodedParser,function (req,res) {
+app.post('/update/treat_record_info',urlencodedParser,async function (req,res) {
     if(req.protocol === 'https') {
         //if is login
         if(req.signedCookies['is_login']=='true')
@@ -383,14 +422,23 @@ app.post('/update/treat_record_info',urlencodedParser,function (req,res) {
             console.log("username:"+account.username+"  identity_ID:"+account.identity_ID+"  try to update treat record info.")
             console.log("host:" + req.headers.host + "  servername:" + req.connection.servername)
 
-            var is_doctor=sql_ctrl.is_doctor(account)
+            var is_doctor=await sql_ctrl.is_doctor(account)
 
             if(is_doctor)
             {
                 //need try catch
-                var record=req.query
 
-                var update_status = sql_ctrl.uptate_treat_record_info(record)
+                var remark_photo=await sql_ctrl.save_treat_record_image(req.files)
+                var record={
+                    start_time:req.query.start_time,
+                    end_time:req.query.end_time,
+                    ispaid:req.query.ispaid,
+                    cost:req.query.cost,
+                    remark_describe:req.query.remark_describe,
+                    remark_photo:remark_photo
+                }
+
+                var update_status =await sql_ctrl.uptate_treat_record_info(record)
 
                 console.log(JSON.stringify(record))
                 console.log('update status:'+update_status.status)
